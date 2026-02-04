@@ -1,0 +1,151 @@
+<!-- setup/templates/setup/wizard.html -->
+ 
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Настройка системы KPI</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        .card { border: 1px solid #ddd; border-radius: 5px; padding: 20px; }
+        .tab { display: none; }
+        .tab.active { display: block; }
+        input, button { margin: 10px 0; padding: 10px; width: 100%; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>⚙️ Настройка системы KPI</h2>
+        <div id="step1" class="tab active">
+            <h3>1. База данных KPI</h3>
+            <input type="text" id="db_host" placeholder="Хост (localhost)" value="localhost">
+            <input type="text" id="db_port" placeholder="Порт (5432)" value="5432">
+            <input type="text" id="db_name" placeholder="Имя базы (kpi)" value="kpi">
+            <input type="text" id="db_user" placeholder="Пользователь (postgres)" value="postgres">
+            <input type="password" id="db_password" placeholder="Пароль">
+            <button onclick="testConnection('kpi')">Тестировать подключение</button>
+            <div id="kpi_result"></div>
+            <button onclick="nextStep()">Далее</button>
+        </div>
+        
+        <div id="step2" class="tab">
+            <h3>2. База данных МИС (опционально)</h3>
+            <label><input type="checkbox" id="enable_mis" checked> Настроить МИС</label>
+            <div id="mis_fields">
+                <input type="text" id="mis_host" placeholder="Хост МИС">
+                <input type="text" id="mis_port" placeholder="Порт (5432)" value="5432">
+                <input type="text" id="mis_name" placeholder="Имя базы">
+                <input type="text" id="mis_user" placeholder="Пользователь">
+                <input type="password" id="mis_password" placeholder="Пароль">
+                <button onclick="testConnection('mis')">Тестировать подключение</button>
+                <div id="mis_result"></div>
+            </div>
+            <button onclick="prevStep()">Назад</button>
+            <button onclick="nextStep()">Далее</button>
+        </div>
+        
+        <div id="step3" class="tab">
+            <h3>3. Сохранение</h3>
+            <p>Все настройки будут сохранены в зашифрованном виде.</p>
+            <button onclick="saveConfig()">💾 Сохранить и запустить</button>
+            <button onclick="prevStep()">Назад</button>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        
+        function showStep(step) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(`step${step}`).classList.add('active');
+        }
+        
+        function nextStep() {
+            if (currentStep < 3) {
+                currentStep++;
+                showStep(currentStep);
+            }
+        }
+        
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                showStep(currentStep);
+            }
+        }
+        
+        function testConnection(type) {
+            const resultDiv = document.getElementById(`${type}_result`);
+            resultDiv.innerHTML = 'Тестирование...';
+            
+            const data = new FormData();
+            data.append('db_type', type);
+            
+            if (type === 'kpi') {
+                data.append('db_name', document.getElementById('db_name').value);
+                data.append('db_user', document.getElementById('db_user').value);
+                data.append('db_password', document.getElementById('db_password').value);
+                data.append('db_host', document.getElementById('db_host').value);
+                data.append('db_port', document.getElementById('db_port').value);
+            } else {
+                data.append('mis_name', document.getElementById('mis_name').value);
+                data.append('mis_user', document.getElementById('mis_user').value);
+                data.append('mis_password', document.getElementById('mis_password').value);
+                data.append('mis_host', document.getElementById('mis_host').value);
+                data.append('mis_port', document.getElementById('mis_port').value);
+            }
+            
+            fetch('/test/', {
+                method: 'POST',
+                body: data
+            })
+            .then(r => r.json())
+            .then(data => {
+                resultDiv.innerHTML = data.success ? 
+                    '✅ Подключение успешно' : 
+                    '❌ Ошибка: ' + data.message;
+                resultDiv.className = data.success ? 'success' : 'error';
+            });
+        }
+        
+        function saveConfig() {
+            const data = new FormData();
+            data.append('db_name', document.getElementById('db_name').value);
+            data.append('db_user', document.getElementById('db_user').value);
+            data.append('db_password', document.getElementById('db_password').value);
+            data.append('db_host', document.getElementById('db_host').value);
+            data.append('db_port', document.getElementById('db_port').value);
+            
+            if (document.getElementById('enable_mis').checked) {
+                data.append('mis_name', document.getElementById('mis_name').value);
+                data.append('mis_user', document.getElementById('mis_user').value);
+                data.append('mis_password', document.getElementById('mis_password').value);
+                data.append('mis_host', document.getElementById('mis_host').value);
+                data.append('mis_port', document.getElementById('mis_port').value);
+            }
+            
+            fetch('/save/', {
+                method: 'POST',
+                body: data
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Настройки сохранены! Перезапускаем...');
+                    setTimeout(() => location.href = '/', 1000);
+                } else {
+                    alert('❌ Ошибка: ' + data.message);
+                }
+            });
+        }
+        
+        // Управление видимостью полей МИС
+        document.getElementById('enable_mis').addEventListener('change', function() {
+            document.getElementById('mis_fields').style.display = 
+                this.checked ? 'block' : 'none';
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!--** apps\dashboard\templates\dashboard\doctor_dashboard.html **-->
+
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Мой дашборд - KPI System{% endblock %}
+
+{% block page_title %}Мои показатели эффективности{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Текущий период: {{ current_period }}</h5>
+                <p class="card-text">Здесь отображаются ваши ключевые показатели эффективности за выбранный период.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    {% for result in kpi_results %}
+    <div class="col-md-4 mb-4">
+        <div class="card kpi-card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title">{{ result.plan_type.name }}</h6>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        {% if result.percentage >= 90 %}
+                        <h3 class="mb-0 text-success">{{ result.percentage }}%</h3>
+                        {% elif result.percentage >= 70 %}
+                        <h3 class="mb-0 text-warning">{{ result.percentage }}%</h3>
+                        {% else %}
+                        <h3 class="mb-0 text-danger">{{ result.percentage }}%</h3>
+                        {% endif %}
+                        <small class="text-muted">
+                            Факт: {{ result.actual_value }} / План: {{ result.plan_value }}
+                        </small>
+                    </div>
+                    <div class="text-end">
+                        <!-- Упрощенный прогресс-бар без inline стилей -->
+                        <div class="progress" style="width: 80px;">
+                            {% if result.percentage >= 90 %}
+                            <div class="progress-bar bg-success" role="progressbar"></div>
+                            {% elif result.percentage >= 70 %}
+                            <div class="progress-bar bg-warning" role="progressbar"></div>
+                            {% else %}
+                            <div class="progress-bar bg-danger" role="progressbar"></div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h5>📊 Данные пока не рассчитаны</h5>
+            <p>KPI показатели за период {{ current_period }} еще не рассчитаны.</p>
+            <a href="/admin/kpi_calc/kpiresult/" class="btn btn-primary btn-sm">
+                Перейти к расчетам
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if chart_data %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Визуализация показателей</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="kpiChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+{% if chart_data %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('kpiChart').getContext('2d');
+    
+    // Простые данные для графика
+    const chartData = {
+        labels: ['Показатель 1', 'Показатель 2', 'Показатель 3'],
+        datasets: [{
+            label: 'Выполнение плана, %',
+            data: [85, 92, 78],
+            backgroundColor: ['#28a745', '#28a745', '#ffc107'],
+            borderColor: ['#28a745', '#28a745', '#ffc107'],
+            borderWidth: 1
+        }]
+    };
+    
+    const kpiChart = new Chart(ctx, {
+        type: 'bar',
+        data: chartData,
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Процент выполнения, %'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}
